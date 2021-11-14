@@ -7,9 +7,11 @@
 # include <iostream>
 # include <iomanip>
 # include <mpi.h>
+# include <vector>
+# include <array>
 
 // Attention , ne marche qu'en C++ 11 ou supérieur :
-double approximate_pi( unsigned long nbSamples ) 
+double approximate_pi(int nbp, unsigned long nbSamples ) 
 {
     typedef std::chrono::high_resolution_clock myclock;
     myclock::time_point beginning = myclock::now();
@@ -19,7 +21,7 @@ double approximate_pi( unsigned long nbSamples )
     std::uniform_real_distribution <double> distribution ( -1.0 ,1.0);
     unsigned long nbDarts = 0;
     // Throw nbSamples darts in the unit square [-1 :1] x [-1 :1]
-    for ( unsigned sample = 0 ; sample < nbSamples ; ++ sample ) {
+    for ( unsigned sample = 0 ; sample < nbSamples / nbp ; ++ sample ) {
         double x = distribution(generator);
         double y = distribution(generator);
         // Test if the dart is in the unit disk
@@ -59,7 +61,47 @@ int main( int nargs, char* argv[] )
 	fileName << "Output" << std::setfill('0') << std::setw(5) << rank << ".txt";
 	std::ofstream output( fileName.str().c_str() );
 
-	// Rajout de code....
+	int nbSamples = 100000000;
+	if (rank == 0) {
+		double pi;
+		if(nbp == 1) {
+			pi = approximate_pi(nbp, nbSamples);
+			
+		}
+		else {
+            // MPI_Status status;
+            // double ratio;
+            // pi = 0;
+            // for(int i = 1; i < nbp; i++) {
+            //     MPI_Recv(&ratio, 1, MPI_DOUBLE, i, MPI_ANY_TAG, globComm, &status);
+            //     pi += ratio;
+            // }
+
+            std::vector<MPI_Request> requests(nbp-1);
+            std::vector<MPI_Status> status(nbp-1);
+
+            std::vector<double> ratios(nbp-1);
+            pi = 0;
+            for(int i = 1; i < nbp; i++) {
+                MPI_Irecv(&ratios[i-1], 1, MPI_DOUBLE, i, MPI_ANY_TAG, globComm, &requests[i-1]);
+            }
+            MPI_Request *request_array = &requests[0];
+            MPI_Status *status_array = &status[0];
+
+            MPI_Waitall(nbp-1, request_array, status_array);
+            for(int i = 1; i < nbp; i++) {
+                pi += ratios[i-1];
+            }
+		}
+		output << "Calculated pi = " << pi << std::endl;
+	}
+	else {
+		double ratio;
+		// Faire l'appelle avec nbp-1, seulement nbp-1 processus vont realiser le calcul
+		ratio = approximate_pi(nbp-1, nbSamples);
+		output << "Calculated Ratio = " << ratio << std::endl;
+		MPI_Send(&ratio, 1, MPI_DOUBLE, 0, 1234, globComm);
+	}
 
 	output.close();
 	// A la fin du programme, on doit synchroniser une dernière fois tous les processus

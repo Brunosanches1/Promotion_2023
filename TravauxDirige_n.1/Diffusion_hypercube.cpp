@@ -5,6 +5,7 @@
 # include <iostream>
 # include <iomanip>
 # include <mpi.h>
+# include <cmath>
 
 int main( int nargs, char* argv[] )
 {
@@ -35,7 +36,21 @@ int main( int nargs, char* argv[] )
 	fileName << "Output" << std::setfill('0') << std::setw(5) << rank << ".txt";
 	std::ofstream output( fileName.str().c_str() );
 
-	// Rajout du programme ici...
+	int jeton = 89;
+	int dimension = (int) log2(nbp);
+	MPI_Status status;
+	if (rank != 0) {
+		// Doit attendre que autre process realise la communication
+		std::cout << rank << std::endl;
+		MPI_Recv(&jeton, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, globComm, &status);
+		output << rank << " <--- " << status.MPI_SOURCE << ": " << jeton << std::endl;
+	}
+	
+	for(int i = rank == 0 ? rank : (int) log2(rank) + 1; i < dimension; i++) {
+		output << rank << " ---> " << rank + (int) pow(2, i) << ": " << jeton << std::endl;
+		MPI_Send(&jeton, 1, MPI_INT, rank + (int) pow(2, i), 1234, globComm);
+		
+	}
 	
 	output.close();
 	// A la fin du programme, on doit synchroniser une dernière fois tous les processus

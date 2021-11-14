@@ -11,7 +11,7 @@ endif
 
 default:	help
 
-all:	HelloWorld.exe Circulation_jeton.exe Calcul_de_pi.exe Diffusion_hypercube.exe
+all:	HelloWorld.exe Circulation_jeton.exe Calcul_de_pi.exe Diffusion_hypercube.exe HelloWorldWithFilesOutput.exe
 
 HelloWorld.exe:	HelloWorld.cpp
 	$(CXX) $(CXXFLAGS) -o HelloWorld.exe HelloWorld.cpp $(LIB)
@@ -24,6 +24,9 @@ Calcul_de_pi.exe:	Calcul_de_pi.cpp
 
 Diffusion_hypercube.exe:	Diffusion_hypercube.cpp
 	$(CXX) $(CXXFLAGS) -o Diffusion_hypercube.exe Diffusion_hypercube.cpp $(LIB)
+
+HelloWorldWithFilesOutput.exe:	HelloWorldWithFilesOutput.cpp
+	$(CXX) $(CXXFLAGS) -o HelloWorldWithFilesOutput.exe HelloWorldWithFilesOutput.cpp $(LIB)
 
 help: 
 	@echo "Available targets : "
