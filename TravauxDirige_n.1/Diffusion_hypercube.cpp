@@ -45,7 +45,7 @@ int main( int nargs, char* argv[] )
 		MPI_Recv(&jeton, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, globComm, &status);
 		output << rank << " <--- " << status.MPI_SOURCE << ": " << jeton << std::endl;
 	}
-	
+
 	for(int i = rank == 0 ? rank : (int) log2(rank) + 1; i < dimension; i++) {
 		output << rank << " ---> " << rank + (int) pow(2, i) << ": " << jeton << std::endl;
 		MPI_Send(&jeton, 1, MPI_INT, rank + (int) pow(2, i), 1234, globComm);
