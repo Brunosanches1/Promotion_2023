@@ -5,6 +5,7 @@
 # include <cmath>
 # include <vector>
 # include <fstream>
+# include <mpi.h>
 
 
 /** Une structure complexe est définie pour la bonne raison que la classe
@@ -93,16 +94,32 @@ std::vector<int>
 computeMandelbrotSet( int W, int H, int maxIter )
 {
     std::chrono::time_point<std::chrono::system_clock> start, end;
-    std::vector<int> pixels(W*H);
+
+    int nbp;
+    MPI_Comm_size(MPI_COMM_WORLD, &nbp);
+
+    std::vector<int> pixels(W * (H / nbp));
+
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
     start = std::chrono::system_clock::now();
     // On parcourt les pixels de l'espace image :
-    for ( int i = 0; i < H; ++i ) {
-      computeMandelbrotSetRow(W, H, maxIter, i, pixels.data() + W*(H-i-1) );
+
+    // Chaque processus travail sur (H / nbp) lignes
+    // Si on a 2 processus, le processus 0 doit faire les lignes 300 a 599 et
+    // le processus 1 les lignes 0 a 299
+    for ( int i = (H / nbp) * (nbp - 1 - rank); i < (H / nbp) * (nbp - rank); ++i ) {
+      computeMandelbrotSetRow(W, H, maxIter, i, pixels.data() + W*((H / nbp) * (nbp - rank)-i-1));
     }
+
     end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end-start;
     std::cout << "Temps calcul ensemble mandelbrot : " << elapsed_seconds.count() 
               << std::endl;
+
     return pixels;
 }
 
@@ -125,14 +142,48 @@ void savePicture( const std::string& filename, int W, int H, const std::vector<i
 
 int main(int argc, char *argv[] ) 
  { 
-    const int W = 800;
-    const int H = 600;
+    const int W = 3840;
+    const int H = 2160;
     // Normalement, pour un bon rendu, il faudrait le nombre d'itérations
     // ci--dessous :
     //const int maxIter = 16777216;
     const int maxIter = 8*65536;
+
+    //Initialization MPI
+    MPI_Init(&argc, &argv);
+
+    int nbp;
+    MPI_Comm_size(MPI_COMM_WORLD, &nbp);
+
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     auto iters = computeMandelbrotSet( W, H, maxIter );
-    savePicture("mandelbrot.tga", W, H, iters, maxIter);
+
+    // std::cout << "rank: " << rank << " ";
+    // for(auto i = iters.begin(); i != iters.end(); i++) {
+    //   std::cout << *i << " ";
+    // }
+    // std::cout << std::endl;
+
+    std::vector<int> iters_gathered;
+
+    if(rank == 0) {
+      iters_gathered.resize(W*H);
+    }
+
+    MPI_Gather(iters.data(), W*(H/nbp), MPI_INT, iters_gathered.data(), W*(H/nbp), MPI_INT, 0, MPI_COMM_WORLD);
+
+    if(rank == 0) {
+      // std::cout << "rank: " << rank << " ";
+      // for(auto i = iters_gathered.begin(); i != iters_gathered.end(); i++) {
+      //   std::cout << *i << " ";
+      // }
+      // std::cout << std::endl;
+      savePicture("mandelbrot.tga", W, H, iters_gathered, maxIter);
+    }
+    
+    MPI_Finalize();
     return EXIT_SUCCESS;
  }
     
