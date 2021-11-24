@@ -9,7 +9,7 @@ else
 CXXFLAGS += -O3 -march=native -Wall
 endif
 
-ALL=matvec.exe Mandelbrot.exe Mandelbrot2.exe
+ALL=matvec.exe Mandelbrot.exe Mandelbrot2.exe matvec2.exe matvec3.exe
 
 default:	help
 

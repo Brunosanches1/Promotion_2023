@@ -113,29 +113,36 @@ computeMandelbrotSet( int W, int H, int maxIter )
         
 
         MPI_Status status;
-
-        int count_line = 0, lines_received = 0;
-        for(int i = 1; i < nbp; i++) {
-            MPI_Send(&count_line, 1, MPI_INT, i, count_line, MPI_COMM_WORLD);
-            count_line++;
-        }
-        
-        while(lines_received < H) {
-            MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-            MPI_Recv(pixels.data() + W*status.MPI_TAG, W, MPI_INT, status.MPI_SOURCE, 
-                status.MPI_TAG, MPI_COMM_WORLD, &status);
-
-            lines_received++;
-            if (count_line < H) {
-                MPI_Send(&count_line, 1, MPI_INT, status.MPI_SOURCE, count_line, MPI_COMM_WORLD);
+        if (nbp > 1) {
+            int count_line = 0, lines_received = 0;
+            for(int i = 1; i < nbp; i++) {
+                MPI_Send(&count_line, 1, MPI_INT, i, count_line, MPI_COMM_WORLD);
                 count_line++;
             }
-            else {
-                int stop_val = -1;
-                MPI_Send(&stop_val, 1, MPI_INT, status.MPI_SOURCE, count_line, MPI_COMM_WORLD);
-            }
             
+            while(lines_received < H) {
+                MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+                MPI_Recv(pixels.data() + W*status.MPI_TAG, W, MPI_INT, status.MPI_SOURCE, 
+                    status.MPI_TAG, MPI_COMM_WORLD, &status);
+
+                lines_received++;
+                if (count_line < H) {
+                    MPI_Send(&count_line, 1, MPI_INT, status.MPI_SOURCE, count_line, MPI_COMM_WORLD);
+                    count_line++;
+                }
+                else {
+                    int stop_val = -1;
+                    MPI_Send(&stop_val, 1, MPI_INT, status.MPI_SOURCE, count_line, MPI_COMM_WORLD);
+                }
+                
+            }
         }
+        else {
+            for ( int i = 0; i < H; ++i ) {
+                computeMandelbrotSetRow(W, H, maxIter, i, pixels.data() + W*(H - i - 1));
+            }
+        }
+        
     }
     else {
         int line_to_work;
