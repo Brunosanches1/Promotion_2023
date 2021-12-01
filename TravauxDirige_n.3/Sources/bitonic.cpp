@@ -9,51 +9,77 @@
 # include <chrono>
 # include <stdexcept>
 # include "Vecteur.hpp"
+# include <thread>
+# include <future>
 using namespace Algebra;
 
 // Tri Parallèle Bitonic
 namespace Bitonic
 {
   template<typename Obj>
-  void _compare( bool up, Obj* objs, int len )
+  void _compare( bool up, Obj* objs, int len)
   {
     int dist = len/2;
     for ( int i = 0; i < dist; ++i ) {
       if ( (objs[i] > objs[i+dist]) == up ) {
-	std::swap(objs[i],objs[i+dist]);
+	      std::swap(objs[i],objs[i+dist]);
       }
     }
   }
   // --------------------------------------------
   template<typename Obj> std::pair<Obj*,int>
-  _merge( bool up, Obj* objs, int len )
+  _merge( bool up, Obj* objs, int len, int nthreads )
   {
     if (len == 1) return std::make_pair(objs,len);
     _compare(up,objs,len);
-    auto first  = _merge(up, objs, len/2);
-    auto second = _merge(up, objs+len/2, len-(len/2));
+    std::pair<Obj*,int> first, second;
+
+    if (nthreads > 1) {
+      std::future<std::pair<Obj*, int>> retFirst;
+      retFirst = std::async([&objs, len, up, nthreads] () {return _merge(up, objs, len/2, nthreads/2);});
+      second = _merge(up, objs+len/2, len-(len/2), nthreads/2);
+      first = retFirst.get();
+    }
+    else {
+      first  = _merge(up, objs, len/2, nthreads);
+      second = _merge(up, objs+len/2, len-(len/2), nthreads);
+    }
+    
     return std::make_pair(first.first, first.second + second.second);
   }
   // --------------------------------------------
   template<typename Obj> std::pair<Obj*,int>
-  _sort( bool up, Obj* objs, int len )
+  _sort( bool up, Obj* objs, int len, int nthreads )
   {
     if (len <= 1) return std::make_pair(objs,1);
-    auto first  = _sort(true , objs, len/2);
-    auto second = _sort(false, objs + len/2, len - (len/2));
-    return _merge(up, first.first, first.second + second.second );
+
+    std::pair<Obj*,int> first, second;
+    if (nthreads > 1) {
+      std::future<std::pair<Obj*, int>> retFirst;
+      retFirst = std::async([&objs, len, nthreads] () {return _sort(true, objs, len/2, nthreads/2);});
+
+      second = _sort(false, objs + len/2, len - (len/2), nthreads/2);
+      first = retFirst.get();
+    }
+    else {
+      first  = _sort(true , objs, len/2, nthreads);
+      second = _sort(false, objs + len/2, len - (len/2), nthreads);
+    }
+    
+    return _merge(up, first.first, first.second + second.second, nthreads );
   }
   // --------------------------------------------
   template<typename Obj> std::vector<Obj>&
-  sort( bool up, std::vector<Obj>& x )
+  sort( bool up, std::vector<Obj>& x, int nthreads)
   {
-    _sort(up, x.data(), int(x.size()));
+    _sort(up, x.data(), int(x.size()), nthreads);
     return x;
   }  
 }
 
 int main()
 {     
+    int nthreads = 8;
     std::chrono::time_point<std::chrono::system_clock> start, end;
     const size_t N = (1UL << 21);
     const size_t dim = 40;
@@ -70,7 +96,7 @@ int main()
     std::vector<double> tab(N);
     for ( auto& x : tab ) x = genInt();
     start = std::chrono::system_clock::now();
-    Bitonic::sort(true, tab);
+    Bitonic::sort(true, tab, nthreads);
     end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end-start;
     std::cout << "Temps calcul tri sur les entiers : " << elapsed_seconds.count() 
@@ -91,7 +117,7 @@ int main()
         x[3] = genDouble();
     }
     start = std::chrono::system_clock::now();
-    Bitonic::sort(true, vtab);
+    Bitonic::sort(true, vtab, nthreads);
     end = std::chrono::system_clock::now();
     elapsed_seconds = end-start;
     std::cout << "Temps calcul tri sur les vecteurs : " << elapsed_seconds.count() 
