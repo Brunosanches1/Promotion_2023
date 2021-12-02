@@ -29,6 +29,7 @@
 #include <cassert>
 #include <chrono>
 #include <random>
+#include <tbb/tbb.h>
 
 constexpr const double dpi = 3.141592653589793;
 constexpr const float fpi = 3.141592653589793f;
@@ -278,17 +279,37 @@ void render(const std::vector<Sphere> &spheres, unsigned width = 640, unsigned h
     float angle = tan(fpi * 0.5f * fov / 180.f);
     auto start = std::chrono::system_clock::now();
     // Trace rays
-    for (unsigned y = 0; y < height; ++y) 
-    {
-        for (unsigned x = 0; x < width; ++x) 
-        {
-            float xx = (2 * ((x + 0.5) * invWidth) - 1) * angle * aspectratio;
-            float yy = (1 - 2 * ((y + 0.5) * invHeight)) * angle;
-            Vec3f raydir(xx, yy, -1);
-            raydir.normalize();
-            image[x + y*width] = trace(Vec3f(0), raydir, spheres, 0);
-        }
-    }
+
+    constexpr const int grainSize  = 64;
+    auto partitioner = tbb::simple_partitioner();
+    tbb::parallel_for(
+        tbb::blocked_range2d<unsigned, unsigned>(0, height, grainSize, 0, width, grainSize),
+        [&] (tbb::blocked_range2d<unsigned, unsigned> const& r) {
+            for (unsigned y = r.rows().begin(); y != r.rows().end(); ++y) 
+            {
+                for (unsigned x = r.cols().begin(); x != r.cols().end(); ++x) 
+                {
+                    float xx = (2 * ((x + 0.5) * invWidth) - 1) * angle * aspectratio;
+                    float yy = (1 - 2 * ((y + 0.5) * invHeight)) * angle;
+                    Vec3f raydir(xx, yy, -1);
+                    raydir.normalize();
+                    image[x + y*width] = trace(Vec3f(0), raydir, spheres, 0);
+                }
+            }
+        },
+        partitioner
+    );
+    // for (unsigned y = 0; y < height; ++y) 
+    // {
+    //     for (unsigned x = 0; x < width; ++x) 
+    //     {
+    //         float xx = (2 * ((x + 0.5) * invWidth) - 1) * angle * aspectratio;
+    //         float yy = (1 - 2 * ((y + 0.5) * invHeight)) * angle;
+    //         Vec3f raydir(xx, yy, -1);
+    //         raydir.normalize();
+    //         image[x + y*width] = trace(Vec3f(0), raydir, spheres, 0);
+    //     }
+    // }
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> deltaT = end - start;
     std::cout << "Calcul de l'image en " << deltaT.count() << " secondes." << std::endl;

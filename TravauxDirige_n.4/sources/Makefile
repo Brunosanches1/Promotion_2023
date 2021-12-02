@@ -10,7 +10,7 @@ CXXFLAGS += -O3 -march=native
 CXXFLAGS2 = ${CXXFLAGS} -O2 -march=native -Wall
 endif
 
-ALL = raytracer.exe
+ALL = raytracer.exe mandelbrot.exe
 
 default: help
 
@@ -25,6 +25,9 @@ clean:
 # dependances particulieres :
 raytracer.exe: raytracer.cpp
 	$(CXX) $(CXXFLAGS2) $^ -o $@ $(LIBS)	
+
+mandelbrot.exe: mandelbrot.cpp
+	$(CXXMPI) $(CXXFLAGS) $^ -o $@ $(LIBMPI) $(LIBS)
 
 help:
 	@echo "Available targets:"
