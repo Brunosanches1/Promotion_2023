@@ -2,14 +2,14 @@ include Make_linux.inc
 #include Make_msys2.inc
 #include Make_osx.inc
 
-CXXFLAGS = -std=c++17 `sdl2-config --cflags`
+CXXFLAGS += -std=c++17 `sdl2-config --cflags`
 ifdef DEBUG
 CXXFLAGS += -g -O0 -Wall -fbounds-check -pedantic -D_GLIBCXX_DEBUG -DDEBUG -finput-charset=utf-8
 else
-CXXFLAGS += -O3 -march=native -Wall -finput-charset=utf8 $(mpic++ --showme:compile)
+CXXFLAGS += -O3 -march=native -Wall -finput-charset=utf8 
 endif
 
-LIBS = $(LIB) `sdl2-config --cflags` -lSDL2_ttf -lSDL2_image  `sdl2-config --libs` $(mpic++ --showme:link)
+LIBS += $(LIB) `sdl2-config --cflags` -lSDL2_ttf -lSDL2_image  `sdl2-config --libs`
 ALL= simulation.exe
 
 default:	help
