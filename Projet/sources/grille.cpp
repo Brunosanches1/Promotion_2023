@@ -32,3 +32,30 @@ std::size_t
     return total;
 }
 //
+std::vector<int>
+épidémie::Grille::statistiquesToVector() const
+{
+    // Allocate vec for the three ints that are in each statistic
+    std::vector<int> vec(3*m_statistiques.size());
+    for (auto i = 0; i < m_statistiques.size(); i++)
+    {
+        vec[i*3] = m_statistiques[i].nombre_contaminant_seulement_grippé;
+        vec[i*3 + 1] = m_statistiques[i].nombre_contaminant_seulement_contaminé_par_agent;
+        vec[i*3 + 2] = m_statistiques[i].nombre_contaminant_grippé_et_contaminé_par_agent;
+    }
+    return vec;
+}
+//
+void
+épidémie::Grille::vectorToStatistiques(std::vector<int> vec)
+{
+    size_t num_statistiques = vec.size()/3;
+    if (num_statistiques != m_statistiques.size())
+        m_statistiques.resize(num_statistiques);
+    
+    for (auto i = 0; i < num_statistiques; i++) {
+        m_statistiques[i].nombre_contaminant_seulement_grippé = vec[i*3];
+        m_statistiques[i].nombre_contaminant_seulement_contaminé_par_agent = vec[i*3 + 1];
+        m_statistiques[i].nombre_contaminant_grippé_et_contaminé_par_agent = vec[i*3 + 2];
+    }
+}

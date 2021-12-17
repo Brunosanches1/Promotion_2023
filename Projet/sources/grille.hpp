@@ -30,8 +30,11 @@ public:
     {
         return {m_dim_x, m_dim_y};
     }
+    // Transform statistics to a vector so can send using MPI in one message
+    std::vector<int> statistiquesToVector() const;
 
-
+    // Transform vector to statistics, used when receiving MPI message
+    void vectorToStatistiques(std::vector<int> vec);
 
 private:
     int m_dim_x, m_dim_y;
