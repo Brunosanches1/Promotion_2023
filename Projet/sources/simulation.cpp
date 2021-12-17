@@ -2,6 +2,7 @@
 #include <random>
 #include <iostream>
 #include <fstream>
+#include <chrono>
 #include "contexte.hpp"
 #include "individu.hpp"
 #include "graphisme/src/SDL2/sdl2.hpp"
@@ -120,9 +121,10 @@ void simulation(bool affiche)
     output << "# jours_écoulés \t nombreTotalContaminésGrippe \t nombreTotalContaminésAgentPathogène()" << std::endl;
 
     épidémie::Grippe grippe(0);
-
-
+    
+    
     std::cout << "Début boucle épidémie" << std::endl << std::flush;
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     while (!quitting)
     {
         auto events = queue.pull_events();
@@ -180,6 +182,8 @@ void simulation(bool affiche)
             personne.veillirDUnJour();
             personne.seDéplace(grille);
         }
+
+
         //#############################################################################################################
         //##    Affichage des résultats pour le temps  actuel
         //#############################################################################################################
@@ -192,6 +196,12 @@ void simulation(bool affiche)
                << grille.nombreTotalContaminésAgentPathogène() << std::endl;
         jours_écoulés += 1;
     }// Fin boucle temporelle
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+    std::cout << "Time par pas de temp = " 
+              << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count()/jours_écoulés 
+              << "[ms]" << std::endl;
+
     output.close();
 }
 
