@@ -77,7 +77,7 @@ void afficheSimulation(sdl2::window& écran, épidémie::Grille const& grille, s
     écran << sdl2::flush;
 }
 
-std::size_t simulateProcess(bool affiche, épidémie::ContexteGlobal contexte) {
+void simulateProcess(bool affiche, épidémie::ContexteGlobal contexte) {
     unsigned int graine_aléatoire = 1;
     std::uniform_real_distribution<double> porteur_pathogène(0.,1.);
 
@@ -115,6 +115,7 @@ std::size_t simulateProcess(bool affiche, épidémie::ContexteGlobal contexte) {
     MPI_Iprobe( 0, 0 , MPI_COMM_WORLD , &quitting , MPI_STATUS_IGNORE);
 
     std::cout << "Début boucle épidémie" << std::endl << std::flush;
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     while (true)
     {
         // Check if it is time to quit
@@ -178,7 +179,8 @@ std::size_t simulateProcess(bool affiche, épidémie::ContexteGlobal contexte) {
             break;
         std::vector<int> statVec = grille.statistiquesToVector();
 
-        MPI_Send( statVec.data() , statVec.size() , MPI_INT , 0 , jours_écoulés , MPI_COMM_WORLD);
+        if (affiche) 
+            MPI_Send( statVec.data() , statVec.size() , MPI_INT , 0 , jours_écoulés , MPI_COMM_WORLD);
 
         /*std::cout << jours_écoulés << "\t" << grille.nombreTotalContaminésGrippe() << "\t"
         << grille.nombreTotalContaminésAgentPathogène() << std::endl;*/
@@ -189,6 +191,10 @@ std::size_t simulateProcess(bool affiche, épidémie::ContexteGlobal contexte) {
         jours_écoulés += 1;
 
     }// Fin boucle temporelle
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    std::cout << "Time par pas de temp = " 
+                    << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count()/jours_écoulés 
+                    << "[ms]" << std::endl;
 
     //Warns that finalized
     MPI_Send( nullptr , 0 , MPI_INT , 0 , 0 , MPI_COMM_WORLD);
@@ -196,16 +202,11 @@ std::size_t simulateProcess(bool affiche, épidémie::ContexteGlobal contexte) {
 
     output.close();
 
-    return jours_écoulés;
-
 }
 
 void afficheProcess(bool affiche, épidémie::ContexteGlobal contexte) {
     constexpr const unsigned int largeur_écran = 1280, hauteur_écran = 1024;
     sdl2::window écran("Simulation épidémie de grippe", {largeur_écran,hauteur_écran});
-
-    std::ofstream output("Courbe2.dat");
-    output << "# jours_écoulés \t nombreTotalContaminésGrippe \t nombreTotalContaminésAgentPathogène()" << std::endl;
 
     épidémie::Grille grille{contexte.taux_population};
 
@@ -232,16 +233,14 @@ void afficheProcess(bool affiche, épidémie::ContexteGlobal contexte) {
         
         MPI_Status status;
         
-        MPI_Recv( statVec.data() , statVec.size() , MPI_INT , 1 , MPI_ANY_TAG , 
-                MPI_COMM_WORLD , &status);
+        if (affiche)
+            MPI_Recv( statVec.data() , statVec.size() , MPI_INT , 1 , MPI_ANY_TAG , 
+                MPI_COMM_WORLD , &status); {
+             grille.vectorToStatistiques(statVec);
         
-        grille.vectorToStatistiques(statVec);
-        
-        int jours_écoulés = status.MPI_TAG;
-        if (affiche) afficheSimulation(écran, grille, jours_écoulés);
-        output << jours_écoulés << "\t" << grille.nombreTotalContaminésGrippe() << "\t"
-            << grille.nombreTotalContaminésAgentPathogène() << std::endl;
-            
+            int jours_écoulés = status.MPI_TAG;
+            afficheSimulation(écran, grille, jours_écoulés);
+        }    
         
     }
 
@@ -249,12 +248,11 @@ void afficheProcess(bool affiche, épidémie::ContexteGlobal contexte) {
     MPI_Iprobe( 1 , 0 , MPI_COMM_WORLD , &flag , MPI_STATUS_IGNORE);
     
     //Set up last receive
-    if (!flag) {
+    if (!flag && affiche) {
         MPI_Recv( statVec.data() , statVec.size() , MPI_INT , 1 , MPI_ANY_TAG , 
                     MPI_COMM_WORLD , MPI_STATUS_IGNORE);
     }
 
-    output.close();
     
 }
 
@@ -273,20 +271,13 @@ void simulation(bool affiche)
         //contexte.taux_population = 1'000;
         contexte.interactions.β = 60.;
 
-        std::size_t jours_écoulés;
-        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         if (rank == 0) {
             afficheProcess(affiche, contexte);
         }
         else if (rank == 1) {
-            jours_écoulés = simulateProcess(affiche, contexte);
+            simulateProcess(affiche, contexte);
         }
-        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-
-        if (rank == 1) 
-            std::cout << "Time par pas de temp = " 
-                    << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count()/jours_écoulés 
-                    << "[ms]" << std::endl;
+        
     }
     else {
         constexpr const unsigned int largeur_écran = 1280, hauteur_écran = 1024;
