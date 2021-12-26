@@ -253,7 +253,8 @@ void afficheProcess(bool affiche, épidémie::ContexteGlobal contexte) {
         }    
         
     }
-    std::cout << "Teste\n";
+
+    // Check if 1 sent data before finishing
     int flag = 0;
     MPI_Iprobe( 1 , 0 , MPI_COMM_WORLD , &flag , MPI_STATUS_IGNORE);
     
