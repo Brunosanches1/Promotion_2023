@@ -4,6 +4,7 @@
 #include <fstream>
 #include <chrono>
 #include <mpi.h>
+#include <omp.h>
 #include "contexte.hpp"
 #include "individu.hpp"
 #include "graphisme/src/SDL2/sdl2.hpp"
@@ -145,17 +146,26 @@ void simulateProcess(bool affiche, épidémie::ContexteGlobal contexte) {
         màjStatistique(grille, population);
         // On parcout la population pour voir qui est contaminé et qui ne l'est pas, d'abord pour la grippe puis pour l'agent pathogène
         std::size_t compteur_grippe = 0, compteur_agent = 0, mouru = 0;
-        for ( auto& personne : population )
+
+        // for ( auto& personne : population )
+        #pragma omp parallel for schedule(static) \
+        shared(population, grille, grippe, agent, contexte, jours_écoulés, largeur_grille, hauteur_grille, std::cout) \
+        reduction(+: compteur_grippe, compteur_agent, mouru)
+        for (auto i = 0; i < contexte.taux_population; i++)
         {
+
+            auto& personne = population[i];
             if (personne.testContaminationGrippe(grille, contexte.interactions, grippe, agent))
             {
                 compteur_grippe ++;
                 personne.estContaminé(grippe);
+
             }
             if (personne.testContaminationAgent(grille, agent))
             {
-                compteur_agent ++;
+                compteur_agent ++;  
                 personne.estContaminé(agent);
+
             }
             // On vérifie si il n'y a pas de personne qui veillissent de veillesse et on génère une nouvelle personne si c'est le cas.
             if (personne.doitMourir())
@@ -168,12 +178,6 @@ void simulateProcess(bool affiche, épidémie::ContexteGlobal contexte) {
             personne.veillirDUnJour();
             personne.seDéplace(grille);
         }
-        
-        // Avoid deadlock when closing application
-        // MPI_Iprobe( 0, 0 , MPI_COMM_WORLD , &quitting , MPI_STATUS_IGNORE);
-        // if (quitting)
-        //     break;
-        std::vector<int> statVec = grille.statistiquesToVector();
 
         if (affiche)  {
             int waiting;
@@ -181,14 +185,11 @@ void simulateProcess(bool affiche, épidémie::ContexteGlobal contexte) {
             MPI_Iprobe( 0, 1 , MPI_COMM_WORLD , &waiting , MPI_STATUS_IGNORE);
             
             if (waiting) {
+                std::vector<int> statVec = grille.statistiquesToVector();
                 MPI_Recv( nullptr , 0 , MPI_INT , 0 , 1 , MPI_COMM_WORLD , MPI_STATUS_IGNORE);
                 MPI_Send( statVec.data() , statVec.size() , MPI_INT , 0 , jours_écoulés , MPI_COMM_WORLD);
             }
         }
-            
-
-        /*std::cout << jours_écoulés << "\t" << grille.nombreTotalContaminésGrippe() << "\t"
-        << grille.nombreTotalContaminésAgentPathogène() << std::endl;*/
 
         output << jours_écoulés << "\t" << grille.nombreTotalContaminésGrippe() << "\t"
                << grille.nombreTotalContaminésAgentPathogène() << std::endl;
