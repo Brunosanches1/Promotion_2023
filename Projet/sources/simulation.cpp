@@ -116,12 +116,8 @@ void simulateProcess(bool affiche, épidémie::ContexteGlobal contexte) {
 
     std::cout << "Début boucle épidémie" << std::endl << std::flush;
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    while (true)
+    while (!quitting)
     {
-        // Check if it is time to quit
-        MPI_Iprobe( 0, 0 , MPI_COMM_WORLD , &quitting , MPI_STATUS_IGNORE);
-        if (quitting)
-            break;
 
         if (jours_écoulés%365 == 0)// Si le premier Octobre (début de l'année pour l'épidémie ;-) )
         {
@@ -174,13 +170,22 @@ void simulateProcess(bool affiche, épidémie::ContexteGlobal contexte) {
         }
         
         // Avoid deadlock when closing application
-        MPI_Iprobe( 0, 0 , MPI_COMM_WORLD , &quitting , MPI_STATUS_IGNORE);
-        if (quitting)
-            break;
+        // MPI_Iprobe( 0, 0 , MPI_COMM_WORLD , &quitting , MPI_STATUS_IGNORE);
+        // if (quitting)
+        //     break;
         std::vector<int> statVec = grille.statistiquesToVector();
 
-        if (affiche) 
-            MPI_Send( statVec.data() , statVec.size() , MPI_INT , 0 , jours_écoulés , MPI_COMM_WORLD);
+        if (affiche)  {
+            int waiting;
+            // Check if 0 sent a message with tag 1, meaning it is waiting for the data to print
+            MPI_Iprobe( 0, 1 , MPI_COMM_WORLD , &waiting , MPI_STATUS_IGNORE);
+            
+            if (waiting) {
+                MPI_Recv( nullptr , 0 , MPI_INT , 0 , 1 , MPI_COMM_WORLD , MPI_STATUS_IGNORE);
+                MPI_Send( statVec.data() , statVec.size() , MPI_INT , 0 , jours_écoulés , MPI_COMM_WORLD);
+            }
+        }
+            
 
         /*std::cout << jours_écoulés << "\t" << grille.nombreTotalContaminésGrippe() << "\t"
         << grille.nombreTotalContaminésAgentPathogène() << std::endl;*/
@@ -190,15 +195,18 @@ void simulateProcess(bool affiche, épidémie::ContexteGlobal contexte) {
         
         jours_écoulés += 1;
 
+        // Check if it is time to quit
+        MPI_Iprobe( 0, 0 , MPI_COMM_WORLD , &quitting , MPI_STATUS_IGNORE);
+
     }// Fin boucle temporelle
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     std::cout << "Time par pas de temp = " 
                     << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count()/jours_écoulés 
                     << "[ms]" << std::endl;
 
-    //Warns that finalized
-    MPI_Send( nullptr , 0 , MPI_INT , 0 , 0 , MPI_COMM_WORLD);
-    std::cout << "Finalize" << std::endl;
+    // Warns that finalized
+    MPI_Request end_request;
+    MPI_Isend( nullptr , 0 , MPI_INT , 0 , 0 , MPI_COMM_WORLD , &end_request);
 
     output.close();
 
@@ -222,7 +230,6 @@ void afficheProcess(bool affiche, épidémie::ContexteGlobal contexte) {
         {
             if (e->kind_of_event() == sdl2::event::quit) {
                 quitting = true;
-                
                 MPI_Isend( &quitting , 1 , MPI_INT , 1 , 0 , MPI_COMM_WORLD, &end_request);
             }
         }
@@ -233,9 +240,12 @@ void afficheProcess(bool affiche, épidémie::ContexteGlobal contexte) {
         
         MPI_Status status;
         
-        if (affiche)
+        if (affiche) {
+            MPI_Request wait_request;
+            // Send a message indicating it is waiting for other message
+            MPI_Isend( nullptr , 0 , MPI_INT , 1 , 1 , MPI_COMM_WORLD , &wait_request);
             MPI_Recv( statVec.data() , statVec.size() , MPI_INT , 1 , MPI_ANY_TAG , 
-                MPI_COMM_WORLD , &status); {
+                MPI_COMM_WORLD , &status);
              grille.vectorToStatistiques(statVec);
         
             int jours_écoulés = status.MPI_TAG;
@@ -243,7 +253,7 @@ void afficheProcess(bool affiche, épidémie::ContexteGlobal contexte) {
         }    
         
     }
-
+    std::cout << "Teste\n";
     int flag = 0;
     MPI_Iprobe( 1 , 0 , MPI_COMM_WORLD , &flag , MPI_STATUS_IGNORE);
     
@@ -273,9 +283,11 @@ void simulation(bool affiche)
 
         if (rank == 0) {
             afficheProcess(affiche, contexte);
+            std::cout << "Process 0 finalized\n";
         }
         else if (rank == 1) {
             simulateProcess(affiche, contexte);
+            std::cout << "Process 1 finalized\n";
         }
         
     }
