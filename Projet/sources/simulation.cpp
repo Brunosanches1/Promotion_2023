@@ -19,8 +19,10 @@ void màjStatistique( épidémie::Grille& grille, std::vector<épidémie::Indivi
     }
     auto [largeur,hauteur] = grille.dimension();
     auto& statistiques = grille.getStatistiques();
-    for ( auto const& personne : individus )
+    #pragma omp parallel for schedule(static)
+    for ( int i = 0; i < individus.size(); i++ )
     {
+        auto const& personne = individus[i];
         auto pos = personne.position();
 
         std::size_t index = pos.x + pos.y * largeur;
@@ -28,10 +30,12 @@ void màjStatistique( épidémie::Grille& grille, std::vector<épidémie::Indivi
         {
             if (personne.aAgentPathogèneContagieux())
             {
+                #pragma omp atomic
                 statistiques[index].nombre_contaminant_grippé_et_contaminé_par_agent += 1;
             }
             else 
             {
+                #pragma omp atomic
                 statistiques[index].nombre_contaminant_seulement_grippé += 1;
             }
         }
@@ -39,6 +43,7 @@ void màjStatistique( épidémie::Grille& grille, std::vector<épidémie::Indivi
         {
             if (personne.aAgentPathogèneContagieux())
             {
+                #pragma omp atomic
                 statistiques[index].nombre_contaminant_seulement_contaminé_par_agent += 1;
             }
         }
@@ -126,10 +131,12 @@ void simulateProcess(bool affiche, épidémie::ContexteGlobal contexte) {
             jour_apparition_grippe = grippe.dateCalculImportationGrippe();
             grippe.calculNouveauTauxTransmission();
             // 23% des gens sont immunisés. On prend les 23% premiers
+            #pragma omp parallel for schedule(static)
             for ( int ipersonne = 0; ipersonne < nombre_immunisés_grippe; ++ipersonne)
             {
                 population[ipersonne].devientImmuniséGrippe();
             }
+            #pragma omp parallel for schedule(static)
             for ( int ipersonne = nombre_immunisés_grippe; ipersonne < int(contexte.taux_population); ++ipersonne )
             {
                 population[ipersonne].redevientSensibleGrippe();
