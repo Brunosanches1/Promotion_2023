@@ -115,8 +115,8 @@ void
 {
     if (m_grippe.sensibilité == Sensibilité::Sensible)
     {
-        m_grippe.temps_incubation = grippe.nombreJoursIncubation();
-        m_grippe.temps_symptomatique = grippe.nombreJoursSymptomatique();
+        m_grippe.temps_incubation = grippe.nombreJoursIncubation()(m_moteur_stochastique);
+        m_grippe.temps_symptomatique = grippe.nombreJoursSymptomatique()(m_moteur_stochastique);
     }
 }
 // --------------------------------------------------------------------------------------------------------------------
@@ -125,8 +125,8 @@ void
 {
     if (m_agent_pathogène.sensibilité == Sensibilité::Sensible )
     {
-        m_agent_pathogène.temps_asymptomatique = agent.nombreJoursAsymptomatique();
-        m_agent_pathogène.temps_symptomatique  = agent.nombreJoursSymptomatique();
+        m_agent_pathogène.temps_asymptomatique = agent.nombreJoursAsymptomatique()(m_moteur_stochastique);
+        m_agent_pathogène.temps_symptomatique  = agent.nombreJoursSymptomatique()(m_moteur_stochastique);
         m_agent_pathogène.temps_passé_immunisé = agent.nombre_jours_immunité;
         m_agent_pathogène.temps_contagieux     = m_agent_pathogène.temps_asymptomatique+m_agent_pathogène.temps_symptomatique +
                                                  agent.période_contagieux.second;

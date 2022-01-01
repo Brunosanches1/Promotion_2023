@@ -29,14 +29,16 @@ public:
         return int(m_générateur_date_importation(m_moteur_stochastique));
     }
 
-    int nombreJoursIncubation()
+    std::gamma_distribution<double> nombreJoursIncubation()
     {
-        return int(m_générateur_incubation(m_moteur_stochastique));
+        return m_générateur_incubation;
+        //return int(m_générateur_incubation(m_moteur_stochastique));
     }
 
-    int nombreJoursSymptomatique() 
+    std::gamma_distribution<double> nombreJoursSymptomatique() 
     {
-        return int(m_générateur_symptomatique(m_moteur_stochastique));
+        return m_générateur_symptomatique;
+        //return int(m_générateur_symptomatique(m_moteur_stochastique));
     }
 
 private:
