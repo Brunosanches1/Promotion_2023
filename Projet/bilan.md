@@ -7,11 +7,9 @@ Sans affichage = 29ms par pas de temp
 Affichage correspond à 75% du temps de la simulation
 
 ## Mesure du temps avec affichage synchrone et MPI
-Avec affichage = 113ms par pas de temp
-Sans affichage = 40ms par pas de temp
+Avec affichage = 124ms par pas de temp
+Sans affichage = 30ms par pas de temp
 
-Sans modification de temps avec l'affichage, la simulation doit de même façon attendre l'affichage pour pouvoir envoyer les
-données.
+Le temps utilisé est plus importante que pour la simulation sans MPI, c'est à cause de l'échange de messages necessaires dans le cas avec ou sans affichage
 
-Sans affichage le temps est plus grande, ça c'est le resultat des échanges de message necessaires pour finalizer l'application correctement
 
