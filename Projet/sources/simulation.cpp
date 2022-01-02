@@ -4,6 +4,7 @@
 #include <fstream>
 #include <chrono>
 #include <mpi.h>
+#include <omp.h>
 #include "contexte.hpp"
 #include "individu.hpp"
 #include "graphisme/src/SDL2/sdl2.hpp"
@@ -22,8 +23,10 @@ void màjStatistique( épidémie::Grille& grille, std::vector<épidémie::Indivi
     auto [largeur,hauteur] = grille.dimension();
     auto& statistiques = grille.getStatistiques();
 
-    for ( auto const& personne : individus)
+    #pragma omp parallel for schedule(static)
+    for ( int i = 0; i < individus.size(); i++ )
     {
+        auto const& personne = individus[i];
         auto pos = personne.position();
 
         std::size_t index = pos.x + pos.y * largeur;
@@ -31,10 +34,12 @@ void màjStatistique( épidémie::Grille& grille, std::vector<épidémie::Indivi
         {
             if (personne.aAgentPathogèneContagieux())
             {
+                #pragma omp atomic
                 statistiques[index].nombre_contaminant_grippé_et_contaminé_par_agent += 1;
             }
             else 
             {
+                #pragma omp atomic
                 statistiques[index].nombre_contaminant_seulement_grippé += 1;
             }
         }
@@ -42,6 +47,7 @@ void màjStatistique( épidémie::Grille& grille, std::vector<épidémie::Indivi
         {
             if (personne.aAgentPathogèneContagieux())
             {
+                #pragma omp atomic
                 statistiques[index].nombre_contaminant_seulement_contaminé_par_agent += 1;
             }
         }
@@ -150,10 +156,13 @@ void simulateProcess(bool affiche, épidémie::ContexteGlobal contexte) {
             grippe.calculNouveauTauxTransmission();
 
             // 23% des gens sont immunisés. On prend les 23% premiers
-            for ( int ipersonne = i_begin; ipersonne < nombre_immunisés_grippe && ipersonne < i_end; ++ipersonne)
+            int for_i_end = std::min(nombre_immunisés_grippe, i_end);
+            #pragma omp parallel for schedule(static)
+            for ( int ipersonne = i_begin; ipersonne < for_i_end; ++ipersonne)
             {
                 population[ipersonne - i_begin].devientImmuniséGrippe();
             }
+            #pragma omp parallel for schedule(static)
             for ( int ipersonne = nombre_immunisés_grippe > i_begin ? nombre_immunisés_grippe : i_begin; 
                 ipersonne < i_end; 
                 ++ipersonne )
@@ -178,17 +187,22 @@ void simulateProcess(bool affiche, épidémie::ContexteGlobal contexte) {
 
         // On parcout la population pour voir qui est contaminé et qui ne l'est pas, d'abord pour la grippe puis pour l'agent pathogène
         std::size_t compteur_grippe = 0, compteur_agent = 0, mouru = 0;
+        #pragma omp parallel for schedule(static) \
+        shared(population, grille, grippe, agent, contexte, jours_écoulés, largeur_grille, hauteur_grille, std::cout) \
+        reduction(+: compteur_grippe, compteur_agent, mouru)
         for ( auto& personne : population)
         {
             if (personne.testContaminationGrippe(grille, contexte.interactions, grippe, agent))
             {
                 compteur_grippe ++;
                 personne.estContaminé(grippe);
+
             }
             if (personne.testContaminationAgent(grille, agent))
             {
-                compteur_agent ++;
+                compteur_agent ++;  
                 personne.estContaminé(agent);
+
             }
             // On vérifie si il n'y a pas de personne qui veillissent de veillesse et on génère une nouvelle personne si c'est le cas.
             if (personne.doitMourir())
@@ -285,6 +299,7 @@ void afficheProcess(bool affiche, épidémie::ContexteGlobal contexte) {
         }    
         
     }
+
     int flag = 0;
     MPI_Iprobe( 1 , 0 , MPI_COMM_WORLD , &flag , MPI_STATUS_IGNORE);
     

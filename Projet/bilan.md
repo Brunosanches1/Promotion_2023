@@ -21,9 +21,13 @@ Mantenant, le temp avec l'affichage est reduit puis que c'est pas necessaire d'a
 finisse son affichage pour envoyer des donnés, le processus 1 continue la simulation jusqu'au moment 
 que le processus 0 est fini, le speedup c'est de 3,3
 
+## Mesure du temps avec affichage asynchrone, MPI et OMP
+Avec affichage = 17ms en utilisant 24 OMP threads
+Sans affichage = 16ms en utilisant 24 OMP threads
+
+Mantenant on peut voir que le temps d'affichage n'est plus important dans la simulation et la difference entre la
+simulation avec et sans affichage est minimale, au contraire de quand ça est en sequentiel
 
 ## Mesure du temps avec affichage asynchrone et plusieurs processeurs MPI
 Avec affichage = 25ms par pas de temp avec 4 processus MPI
 Sans affichage = 21ms par pas de temps avec 4 processus MPI
-
-

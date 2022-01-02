@@ -2,7 +2,7 @@ include Make_linux.inc
 #include Make_msys2.inc
 #include Make_osx.inc
 
-CXXFLAGS += -std=c++17 `sdl2-config --cflags`
+CXXFLAGS += -std=c++17 `sdl2-config --cflags` -fopenmp
 ifdef DEBUG
 CXXFLAGS += -g -O0 -Wall -fbounds-check -pedantic -D_GLIBCXX_DEBUG -DDEBUG -finput-charset=utf-8
 else
