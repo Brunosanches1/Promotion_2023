@@ -31,3 +31,8 @@ simulation avec et sans affichage est minimale, au contraire de quand ça est en
 ## Mesure du temps avec affichage asynchrone et plusieurs processeurs MPI
 Avec affichage = 25ms par pas de temp avec 4 processus MPI
 Sans affichage = 21ms par pas de temps avec 4 processus MPI
+
+## Mesure du temps avec MPI et OMP finale
+Meilleur temp obtenu avec 3 threads OMP et 2 processus MPI (Un pour la simulation et autre pour l'affichage)
+En utilisant un seule ordinateur, ce n'est pas profitable d'utiliser MPI, mais peut-être que dans une architecture NUMA ou 
+en utilisant plusieurs ordinateurs ce résultat peut être changer pour plus que 2 processus
