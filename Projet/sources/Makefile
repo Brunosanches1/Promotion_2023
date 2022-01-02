@@ -4,7 +4,7 @@ include Make_linux.inc
 
 CXXFLAGS += -std=c++17 `sdl2-config --cflags` -fopenmp
 ifdef DEBUG
-CXXFLAGS += -g -O0 -Wall -fbounds-check -pedantic -D_GLIBCXX_DEBUG -DDEBUG -finput-charset=utf-8
+CXXFLAGS += -g -O0 -Wall -fbounds-check -pedantic -D_GLIBCXX_DEBUG -DDEBUG -finput-charset=utf8
 else
 CXXFLAGS += -O3 -march=native -Wall -finput-charset=utf8 
 endif
